@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suhaniii's Companion</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            scroll-behavior: smooth;
+            background-color: #FDFBF6; /* Creamy background */
+        }
+        .activity-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .activity-card:hover, .activity-card:focus-within {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+        }
+        .details {
+            display: none;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.6s ease-in-out;
+        }
+        .details.show {
+            display: block;
+            max-height: 1000px;
+        }
+        .immersive-modal {
+            transition: opacity 0.5s ease-in-out;
+        }
+        .immersive-modal.show {
+            display: flex;
+        }
+        #breathing-circle-modal {
+            transition: transform 4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 20px 5px rgba(13, 148, 136, 0.4), 0 0 40px 15px rgba(13, 148, 136, 0.2); /* Teal shadow */
+        }
+        #breathing-circle-modal.grow { transform: scale(1.5); box-shadow: 0 0 30px 10px rgba(13, 148, 136, 0.6), 0 0 60px 25px rgba(13, 148, 136, 0.3); }
+        #breathing-circle-modal.shrink { transform: scale(0.8); box-shadow: 0 0 15px 3px rgba(13, 148, 136, 0.3), 0 0 30px 10px rgba(13, 148, 136, 0.1); }
+        
+        @keyframes pulse-slow {
+          0%, 100% { transform: scale(1); opacity: 0.1; }
+          50% { transform: scale(1.2); opacity: 0.05; }
+        }
+        .animate-pulse-slow { animation: pulse-slow 10s infinite ease-in-out; }
+
+        @keyframes press-and-release {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(1px, 1px); }
+        }
+        #pressing-thumb {
+            transform-origin: center;
+            animation: press-and-release 2s infinite ease-in-out;
+        }
+        #pressure-point-pulse {
+            transform-origin: center;
+            animation: pulse-acupressure 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @keyframes pulse-acupressure {
+          0% { transform: scale(1); opacity: 0.8; }
+          100% { transform: scale(4); opacity: 0; }
+        }
+        
+        @keyframes snore {
+            0% { transform: translate(0, 0) scale(0.5); opacity: 1; }
+            100% { transform: translate(15px, -20px) scale(1.2); opacity: 0; }
+        }
+        .snore-z {
+            font-size: 14px;
+            font-weight: bold;
+            fill: #4b5563;
+            animation: snore 2.5s infinite ease-out;
+        }
+        .snore-z.z2 { animation-delay: 0.7s; }
+        .snore-z.z3 { animation-delay: 1.4s; }
+    </style>
+</head>
+<body class="text-gray-700 antialiased">
+
+    <div class="container mx-auto p-4 sm:p-6 md:p-8 max-w-4xl">
+        <header class="text-center mb-8 md:mb-12">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-800">Suhaniii ka sar dard mein sath dene wala</h1>
+            <p class="mt-3 text-lg text-gray-500">A personalized companion to help Suhaniii feel better.</p>
+        </header>
+
+        <main>
+            <h2 class="text-3xl font-bold text-center text-gray-700 mb-8">Relief Activities</h2>
+            <p class="text-center text-gray-500 mb-8 -mt-4">Click on any activity to see more details.</p>
+            <div id="activities-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </main>
+
+        <section id="trigger-log" class="mt-12 p-6 bg-white rounded-2xl shadow-sm border border-green-100">
+             <h2 class="text-2xl font-bold text-gray-700 mb-4">My Personal Trigger Log</h2>
+             <p id="trigger-log-description" class="text-gray-600 mb-4">Keep track of things you suspect might be triggering your migraines.</p>
+             <div id="trigger-log-controls" class="flex flex-col sm:flex-row gap-2 mb-4">
+                 <input type="text" id="trigger-input" class="flex-grow w-full px-4 py-2 bg-green-50 border border-green-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="E.g., Lack of sleep, strong perfume...">
+                 <button id="add-trigger-btn" class="px-6 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors">Add Trigger</button>
+             </div>
+             <div id="trigger-list" class="mt-4"></div>
+        </section>
+
+    </div>
+
+    <div id="breathing-modal" class="immersive-modal fixed inset-0 bg-gray-800 bg-opacity-95 backdrop-blur-lg flex-col items-center justify-center text-white z-50 hidden">
+        <div class="relative flex items-center justify-center">
+            <div class="absolute w-80 h-80 rounded-full bg-teal-500 opacity-20 animate-pulse-slow"></div>
+            <div id="breathing-circle-modal" class="w-48 h-48 rounded-full bg-teal-600 flex items-center justify-center text-center">
+                <span id="breathing-text-modal" class="text-white font-semibold text-2xl transition-opacity duration-500">Get Ready...</span>
+            </div>
+        </div>
+        <button id="sound-toggle-btn" class="absolute bottom-6 left-6 text-white opacity-60 hover:opacity-100 transition-opacity p-2 rounded-full hover:bg-white/10" aria-label="Toggle sound">
+             <svg id="sound-on-icon" xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+            </svg>
+            <svg id="sound-off-icon" xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clip-rule="evenodd" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+            </svg>
+        </button>
+        <button id="close-breathing-modal" class="absolute top-4 right-6 text-5xl font-light text-white opacity-60 hover:opacity-100 transition-opacity" aria-label="Close breathing session">&times;</button>
+        <p class="absolute bottom-8 text-gray-400 text-sm">Click the '×' or press the 'Esc' key to exit.</p>
+    </div>
+
+    <div id="compress-modal" class="immersive-modal fixed inset-0 bg-blue-900 bg-opacity-95 backdrop-blur-lg flex-col items-center justify-center text-white z-50 hidden">
+        <div class="relative flex flex-col items-center justify-center">
+            <div class="absolute w-80 h-80 rounded-full bg-blue-400 opacity-20 animate-pulse-slow"></div>
+            <svg class="w-24 h-24 text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-12v4m-2-2h4m5 4v4m-2-2h4M17 3l-4.5 4.5M19 5l-4.5 4.5M5 19l4.5-4.5M7 17l4.5-4.5" />
+            </svg>
+            <div id="compress-timer-display" class="text-6xl font-mono font-bold text-white mt-8">15:00</div>
+            <p class="text-blue-200 mt-2">Relax and feel the cool sensation.</p>
+        </div>
+        <button id="close-compress-modal" class="absolute top-4 right-6 text-5xl font-light text-white opacity-60 hover:opacity-100 transition-opacity" aria-label="Close compress session">&times;</button>
+        <p class="absolute bottom-8 text-gray-400 text-sm">Click the '×' or press the 'Esc' key to exit.</p>
+    </div>
+
+    <script>
+        const activities = [
+             {
+                id: "breathing",
+                title: "Immersive Breathing",
+                icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" /></svg>`,
+                description: "Enter a full-screen guided breathing session with visual and audio cues.",
+                details: `<p class="mb-4">For a distraction-free experience, this exercise will open in full-screen.</p><button id="start-breathing-fullscreen-btn" class="w-full px-5 py-3 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 transition-colors">Begin Session</button>`
+            },
+            {
+                id: "hydrate",
+                title: "Stay Hydrated",
+                icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`,
+                description: "Dehydration is a common migraine trigger. Sip water.",
+                details: `<p>Even mild dehydration can trigger a migraine. Drink water consistently throughout the day.</p><ul class='list-disc list-inside mt-2 space-y-1'><li>Keep a water bottle with you.</li><li>Sip slowly, especially if you're feeling nauseous.</li><li>Avoid sugary drinks (coke), which can sometimes make headaches worse.</li></ul>`
+            },
+            {
+                id: "stretches", title: "Gentle Neck Stretches", icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 1v4m0 0h-4m4 0l-5-5" /></svg>`, description: "Release tension in your neck and shoulder muscles.",
+                details: `<p>Perform these stretches slowly and gently.</p><ul class='list-disc list-inside mt-2 space-y-2'><li><strong>Ear to Shoulder:</strong> Tilt your head gently. Hold for 15-30 seconds. Repeat on other side.</li><li><strong>Chin to Chest:</strong> Slowly lower chin. Hold for 15-30 seconds.</li></ul>`
+            },
+            {
+                id: "darkroom", title: "Find a Dark, Quiet Room", icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>`, description: "Reduce sensory input like light and sound.",
+                details: `<p>Migraines often increase sensitivity to light and sound. Resting in a dark, quiet environment can provide significant relief.</p>
+                <div class="flex justify-center items-center mt-4 p-4 bg-gray-100 rounded-lg">
+                    <svg width="150" height="150" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="10" y="70" width="80" height="10" fill="#a16207" />
+                        <rect x="12" y="80" width="5" height="10" fill="#854d0e" />
+                        <rect x="83" y="80" width="5" height="10" fill="#854d0e" />
+                        <rect x="10" y="60" width="80" height="10" rx="2" fill="#e5e7eb" />
+                        <path d="M 20 60 Q 35 50 50 60" fill="#ffffff" stroke="#d1d5db" stroke-width="1"/>
+                        <path d="M 10 60 C 20 50, 80 50, 90 60 L 90 70 L 10 70 Z" fill="#0d9488" />
+                        <text x="55" y="55" class="snore-z">z</text>
+                        <text x="55" y="55" class="snore-z z2">Z</text>
+                        <text x="55" y="55" class="snore-z z3">z</text>
+                    </svg>
+                </div>
+                `
+            },
+            {
+                id: "coldcompress",
+                title: "Immersive Cold Compress",
+                icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-12v4m-2-2h4m5 4v4m-2-2h4M17 3l-4.5 4.5M19 5l-4.5 4.5M5 19l4.5-4.5M7 17l4.5-4.5" /></svg>`,
+                description: "A guided 15-minute session with a calming cool-down visual.",
+                details: `<p class="mb-4">This will start a 15-minute timer in a distraction-free, full-screen view.</p><button id="start-compress-fullscreen-btn" class="w-full px-5 py-3 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">Begin Session</button>`
+            },
+            {
+                id: "acupressure", title: "Animated Acupressure", icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>`, description: "An animated guide to help you find and massage the LI4 point.",
+                details: `<p>Gently apply firm, circular pressure to the fleshy area between your thumb and index finger.</p>
+                <div class="flex justify-center items-center mt-4 p-4 bg-amber-50 rounded-lg">
+                    <svg width="150" height="150" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M42,88 C22,85 12,65 15,45 C18,25 35,15 48,18 L68,22 C85,25 95,40 92,58 L85,80 C80,95 60,95 42,88 Z" fill="#FFFBF5" stroke="#a1a1aa" stroke-width="2" />
+                        <path d="M15,45 C5,48 2,60 10,68 C18,75 30,70 42,60" fill="#FFFBF5" stroke="#a1a1aa" stroke-width="2" />
+                        <circle cx="45" cy="52" r="4" fill="rgba(217, 119, 6, 0.4)" />
+                        <circle id="pressure-point-pulse" cx="45" cy="52" r="4" fill="rgba(217, 119, 6, 0.8)" />
+                        <g id="pressing-thumb">
+                            <path d="M45,52 C35,42 40,27 50,32 C60,37 55,52 45,52 Z" fill="#FFFBF5" stroke="#a1a1aa" stroke-width="2" />
+                        </g>
+                    </svg>
+                </div>`
+            },
+        ];
+
+        const grid = document.getElementById('activities-grid');
+        let breathingInterval = null;
+        let compressTimerInterval = null;
+
+        activities.forEach((activity) => {
+            const card = document.createElement('div');
+            card.className = 'activity-card bg-white p-6 rounded-2xl shadow-sm flex flex-col items-center text-center cursor-pointer border border-green-100';
+            card.dataset.id = activity.id;
+            // ENHANCEMENT: Add ARIA attributes for accessibility
+            card.setAttribute('tabindex', '0');
+            card.setAttribute('aria-expanded', 'false');
+            card.innerHTML = `<div class="mb-4 pointer-events-none">${activity.icon}</div><h3 class="text-xl font-semibold text-gray-700 mb-2 pointer-events-none">${activity.title}</h3><p class="text-gray-500 flex-grow pointer-events-none">${activity.description}</p><div class="details mt-4 text-left w-full text-gray-600 space-y-2">${activity.details}</div>`;
+            grid.appendChild(card);
+        });
+
+        // --- GLOBAL EVENT LISTENERS ---
+        document.body.addEventListener('click', (e) => {
+            const card = e.target.closest('.activity-card');
+            if (card && !e.target.closest('button, svg')) {
+                const details = card.querySelector('.details');
+                const isShowing = details.classList.toggle('show');
+                // ENHANCEMENT: Toggle ARIA attribute
+                card.setAttribute('aria-expanded', isShowing);
+            }
+            if (e.target.id === 'start-breathing-fullscreen-btn') startBreathingSession();
+            if (e.target.id === 'close-breathing-modal') stopBreathingSession();
+            if (e.target.id === 'start-compress-fullscreen-btn') {
+                const remaining = parseInt(e.target.dataset.remaining, 10);
+                startCompressSession(remaining > 0 ? remaining : 900);
+            }
+            if (e.target.id === 'close-compress-modal') stopCompressSession();
+            if (e.target.id === 'sound-toggle-btn') toggleSound();
+        });
+        
+        document.body.addEventListener('keydown', (e) => {
+             const card = e.target.closest('.activity-card');
+             if (card && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault(); // Prevent page scroll on spacebar
+                const details = card.querySelector('.details');
+                const isShowing = details.classList.toggle('show');
+                card.setAttribute('aria-expanded', isShowing);
+             }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (breathingModal.classList.contains('show')) stopBreathingSession();
+                if (compressModal.classList.contains('show')) stopCompressSession();
+            }
+        });
+
+        // --- IMMERSIVE MODAL ELEMENTS ---
+        const breathingModal = document.getElementById('breathing-modal');
+        const compressModal = document.getElementById('compress-modal');
+        
+        // --- BREATHING LOGIC ---
+        const modalCircle = document.getElementById('breathing-circle-modal');
+        const modalText = document.getElementById('breathing-text-modal');
+        const soundOnIcon = document.getElementById('sound-on-icon');
+        const soundOffIcon = document.getElementById('sound-off-icon');
+        let breathSynth;
+        let isSoundOn = true; // ENHANCEMENT: Sound state
+
+        function toggleSound() {
+            isSoundOn = !isSoundOn;
+            soundOnIcon.classList.toggle('hidden', !isSoundOn);
+            soundOffIcon.classList.toggle('hidden', isSoundOn);
+        }
+
+        function startBreathingSession() {
+            if (!breathSynth) {
+                breathSynth = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.8, decay: 0.2, sustain: 0.5, release: 1 } }).toDestination();
+            }
+            breathingModal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            const states = [ { text: "Breathe In", duration: 4000, action: 'grow', note: 'C4' }, { text: "Hold", duration: 4000, action: 'hold', note: null }, { text: "Breathe Out", duration: 6000, action: 'shrink', note: 'G3' } ];
+            let currentState = -1;
+            const cycle = () => {
+                currentState = (currentState + 1) % states.length;
+                const { text, duration, action, note } = states[currentState];
+                modalText.style.opacity = '0';
+                setTimeout(() => { modalText.textContent = text; modalText.style.opacity = '1'; }, 500);
+                modalCircle.className = `w-48 h-48 rounded-full bg-teal-600 flex items-center justify-center text-center ${action}`;
+                // ENHANCEMENT: Check sound state before playing
+                if (note && isSoundOn && Tone.context.state === 'running') { breathSynth.triggerAttackRelease(note, duration / 1000); }
+                breathingInterval = setTimeout(cycle, duration);
+            };
+            setTimeout(cycle, 1000);
+        }
+
+        function stopBreathingSession() {
+            clearTimeout(breathingInterval);
+            breathingInterval = null;
+            breathingModal.classList.remove('show');
+            document.body.style.overflow = '';
+            modalText.textContent = 'Get Ready...';
+            modalCircle.className = 'w-48 h-48 rounded-full bg-teal-600 flex items-center justify-center text-center';
+        }
+        
+        // --- COLD COMPRESS LOGIC ---
+        const compressTimerDisplay = document.getElementById('compress-timer-display');
+
+        function startCompressSession(durationInSeconds) {
+            compressModal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            // ENHANCEMENT: Set end time only for new sessions
+            if (durationInSeconds === 900) {
+                 const endTime = Date.now() + durationInSeconds * 1000;
+                 localStorage.setItem('compressTimerEndTime', endTime);
+            }
+            startCompressTimer(durationInSeconds, compressTimerDisplay);
+        }
+
+        function stopCompressSession() {
+            clearInterval(compressTimerInterval);
+            compressTimerInterval = null;
+            compressModal.classList.remove('show');
+            document.body.style.overflow = '';
+            compressTimerDisplay.textContent = "15:00";
+             // ENHANCEMENT: Clear stored end time
+            localStorage.removeItem('compressTimerEndTime');
+            checkRunningTimers(); // Reset button text
+        }
+
+        function startCompressTimer(duration, display) {
+            let timer = duration;
+            const update = () => {
+                const minutes = Math.floor(timer / 60).toString().padStart(2, '0');
+                const seconds = (timer % 60).toString().padStart(2, '0');
+                display.textContent = `${minutes}:${seconds}`;
+                if (--timer < 0) {
+                    clearInterval(compressTimerInterval);
+                    compressTimerInterval = null;
+                    display.textContent = "Done!";
+                    // ENHANCEMENT: Clear stored end time
+                    localStorage.removeItem('compressTimerEndTime');
+                }
+            };
+            update();
+            compressTimerInterval = setInterval(update, 1000);
+        }
+        
+        // ENHANCEMENT: Check for running timer on page load
+        function checkRunningTimers() {
+            const compressButton = document.getElementById('start-compress-fullscreen-btn');
+            if (!compressButton) return;
+            
+            const endTime = localStorage.getItem('compressTimerEndTime');
+            if (endTime && parseInt(endTime) > Date.now()) {
+                const remainingSeconds = Math.round((parseInt(endTime) - Date.now()) / 1000);
+                const minutes = Math.floor(remainingSeconds / 60).toString().padStart(2, '0');
+                const seconds = (remainingSeconds % 60).toString().padStart(2, '0');
+
+                compressButton.textContent = `Resume Session (${minutes}:${seconds})`;
+                compressButton.dataset.remaining = remainingSeconds;
+            } else {
+                 compressButton.textContent = 'Begin Session';
+                 compressButton.dataset.remaining = '0';
+            }
+        }
+
+
+        // --- TRIGGER LOG LOGIC ---
+        const triggerInput = document.getElementById('trigger-input');
+        const addTriggerBtn = document.getElementById('add-trigger-btn');
+        const triggerListDiv = document.getElementById('trigger-list');
+        
+        // ENHANCEMENT: Robust Local Storage handling
+        function isLocalStorageAvailable() {
+            let storage;
+            try {
+                storage = window['localStorage'];
+                const x = '__storage_test__';
+                storage.setItem(x, x);
+                storage.removeItem(x);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+        
+        const getTriggers = () => {
+            try {
+                return JSON.parse(localStorage.getItem('migraineTriggers')) || [];
+            } catch (e) {
+                console.error("Could not get triggers from localStorage", e);
+                return [];
+            }
+        };
+
+        const saveTriggers = (triggers) => {
+             if (!isLocalStorageAvailable) return;
+             try {
+                localStorage.setItem('migraineTriggers', JSON.stringify(triggers));
+             } catch (e) {
+                 console.error("Could not save triggers to localStorage", e);
+             }
+        };
+
+        const renderTriggers = () => {
+            triggerListDiv.innerHTML = '';
+            const triggers = getTriggers();
+            if (triggers.length === 0) {
+                 triggerListDiv.innerHTML = `<p class="text-gray-400 text-center italic">Your logged triggers will appear here.</p>`;
+                 return;
+            }
+            triggers.forEach((trigger, index) => {
+                const triggerEl = document.createElement('div');
+                triggerEl.className = 'flex justify-between items-center bg-green-50 p-3 rounded-lg mb-2';
+                // ENHANCEMENT: Added aria-label for accessibility
+                triggerEl.innerHTML = `<span class="text-gray-700">${trigger}</span><button data-index="${index}" class="delete-trigger-btn text-red-500 hover:text-red-700 text-xl font-bold" aria-label="Delete trigger: ${trigger}">&times;</button>`;
+                triggerListDiv.appendChild(triggerEl);
+            });
+        };
+
+        function initializeTriggerLog() {
+            if (isLocalStorageAvailable()) {
+                addTriggerBtn.addEventListener('click', () => {
+                     const triggerText = triggerInput.value.trim();
+                     if (triggerText) {
+                         const triggers = getTriggers();
+                         triggers.push(triggerText);
+                         saveTriggers(triggers);
+                         renderTriggers();
+                         triggerInput.value = '';
+                         triggerInput.focus();
+                     }
+                });
+                triggerInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addTriggerBtn.click(); });
+                triggerListDiv.addEventListener('click', (e) => {
+                     if (e.target.classList.contains('delete-trigger-btn')) {
+                         const index = parseInt(e.target.dataset.index, 10);
+                         let triggers = getTriggers();
+                         triggers.splice(index, 1);
+                         saveTriggers(triggers);
+                         renderTriggers();
+                     }
+                });
+                renderTriggers();
+            } else {
+                // Gracefully disable the feature if localStorage is not available
+                document.getElementById('trigger-log-description').textContent = "This browser does not support local storage, so triggers cannot be saved.";
+                document.getElementById('trigger-log-controls').style.display = 'none';
+            }
+        }
+        
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+             initializeTriggerLog();
+             checkRunningTimers();
+        });
+    </script>
+</body>
+</html>
